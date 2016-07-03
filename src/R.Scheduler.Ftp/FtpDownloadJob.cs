@@ -1,7 +1,10 @@
 ﻿using System;
+using System.Configuration;
 using System.Reflection;
 using Common.Logging;
 using Quartz;
+using R.Scheduler.Core;
+using R.Scheduler.Core.FeatureToggles;
 using StructureMap;
 
 namespace R.Scheduler.Ftp
@@ -43,21 +46,22 @@ namespace R.Scheduler.Ftp
         /// </summary>
         public FtpDownloadJob()
         {
-            Logger.Info("Entering FtpDownloadJob.ctor().");
+            Logger.Debug("Entering FtpDownloadJob.ctor().");
         }
 
         public void Execute(IJobExecutionContext context)
         {
             JobDataMap data = context.MergedJobDataMap;
+            var jobName = context.JobDetail.Key.Name;
 
-            string ftpHost = GetRequiredParameter(data, FtpHost);
+            string ftpHost = GetRequiredParameter(data, FtpHost, jobName);
             string serverPort = GetOptionalParameter(data, ServerPort);
             string userName = GetOptionalParameter(data, UserName);
             string password = GetOptionalParameter(data, Password);
-            string localDirectoryPath = GetRequiredParameter(data, LocalDirectoryPath);
+            string localDirectoryPath = GetRequiredParameter(data, LocalDirectoryPath, jobName);
             string remoteDirectoryPath = GetOptionalParameter(data, RemoteDirectoryPath);
             string cutOff = GetOptionalParameter(data, CutOff);
-            string fileExtensions = GetRequiredParameter(data, FileExtensions);
+            string fileExtensions = GetRequiredParameter(data, FileExtensions, jobName);
 
             // Set defaults
             int port = (!string.IsNullOrEmpty(serverPort) ? Int32.Parse(serverPort) : 21);
@@ -67,14 +71,37 @@ namespace R.Scheduler.Ftp
             TimeSpan cutOffTimeSpan;
             if (!TimeSpan.TryParse(cutOff, out cutOffTimeSpan))
             {
-                throw new ArgumentException(string.Format("Invalid cutOffTimeSpan format [{0}] specified.", cutOff));
+                var err = string.Format("Invalid cutOffTimeSpan format [{0}] specified.", cutOff);
+                Logger.ErrorFormat("Error in FtpDownloadJob ({0}): {1}", jobName, err);
+                throw new JobExecutionException(err);
+            }
+
+            try
+            {
+                if (new EncryptionFeatureToggle().FeatureEnabled)
+                {
+                    userName = AESGCM.SimpleDecrypt(userName, Convert.FromBase64String(ConfigurationManager.AppSettings["SchedulerEncryptionKey"]));
+                    password = AESGCM.SimpleDecrypt(password, Convert.FromBase64String(ConfigurationManager.AppSettings["SchedulerEncryptionKey"]));
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("ConfigurationError executing SecureWebRequestJob job.", ex);
             }
 
             // Get files
-            using (var ftpLibrary = ObjectFactory.GetInstance<IFtpLibrary>())
+            try
             {
-                ftpLibrary.Connect(ftpHost, port, userName, password);
-                ftpLibrary.GetFiles(remoteDirectoryPath, localDirectoryPath, fileExtensions, cutOffTimeSpan);
+                using (var ftpLibrary = ObjectFactory.GetInstance<IFtpLibrary>())
+                {
+                    ftpLibrary.Connect(ftpHost, port, userName, password);
+                    ftpLibrary.GetFiles(remoteDirectoryPath, localDirectoryPath, fileExtensions, cutOffTimeSpan);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(string.Format("Error in FtpDownloadJob ({0}):", jobName), ex);
+                throw new JobExecutionException(ex.Message, ex, false);
             }
         }
 
@@ -90,12 +117,13 @@ namespace R.Scheduler.Ftp
             return value;
         }
 
-        protected virtual string GetRequiredParameter(JobDataMap data, string propertyName)
+        protected virtual string GetRequiredParameter(JobDataMap data, string propertyName, string jobName)
         {
             string value = data.GetString(propertyName);
             if (string.IsNullOrEmpty(value))
             {
-                throw new ArgumentException(propertyName + " not specified.");
+                Logger.ErrorFormat("Error in FtpDownloadJob ({0}): {1} not specified.", jobName, propertyName);
+                throw new JobExecutionException(string.Format("{0} not specified.", propertyName));
             }
             return value;
         }

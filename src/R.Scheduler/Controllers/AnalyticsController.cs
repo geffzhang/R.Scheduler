@@ -1,15 +1,17 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Web.Http;
 using AutoMapper;
 using Common.Logging;
-using Quartz;
 using R.Scheduler.Contracts.Model;
+using R.Scheduler.Core;
 using R.Scheduler.Interfaces;
 using StructureMap;
 
 namespace R.Scheduler.Controllers
 {
+    [SchedulerAuthorize(AppSettingRoles = "Roles", AppSettingUsers = "Users")]
     public class AnalyticsController : ApiController
     {
         private static readonly ILog Logger = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
@@ -27,6 +29,7 @@ namespace R.Scheduler.Controllers
         /// <returns></returns>
         [AcceptVerbs("GET")]
         [Route("api/jobCount")]
+        [SchedulerAuthorize(AppSettingRoles = "Read.Roles", AppSettingUsers = "Read.Users")]
         public int GetJobCount()
         {
             Logger.Debug("Entered AnalyticsController.GetJobCount().");
@@ -40,6 +43,7 @@ namespace R.Scheduler.Controllers
         /// <returns></returns>
         [AcceptVerbs("GET")]
         [Route("api/triggerCount")]
+        [SchedulerAuthorize(AppSettingRoles = "Read.Roles", AppSettingUsers = "Read.Users")]
         public int GetTriggerCount()
         {
             Logger.Debug("Entered AnalyticsController.GetTriggerCount().");
@@ -52,14 +56,13 @@ namespace R.Scheduler.Controllers
         /// </summary>
         /// <returns></returns>
         [AcceptVerbs("GET")]
-        [Route("api/firedTriggers")]
-        public IList<TriggerDetails> GetFiredTriggers()
+        [Route("api/executingJobs")]
+        [SchedulerAuthorize(AppSettingRoles = "Read.Roles", AppSettingUsers = "Read.Users")]
+        public IList<FireInstance> GetExecutingJobs()
         {
-            Logger.Info("Entered AnalyticsController.GetFiredTriggers().");
+            Logger.Debug("Entered AnalyticsController.GetExecutingJobs().");
 
-            IEnumerable<ITrigger> quartzFiredTriggers = _analytics.GetFiredTriggers();
-
-            return TriggerHelper.GetTriggerDetails(quartzFiredTriggers);
+            return _analytics.GetExecutingJobs().ToList();
         }
 
         /// <summary>
@@ -68,6 +71,7 @@ namespace R.Scheduler.Controllers
         /// <returns></returns>
         [AcceptVerbs("GET")]
         [Route("api/erroredJobs")]
+        [SchedulerAuthorize(AppSettingRoles = "Read.Roles", AppSettingUsers = "Read.Users")]
         public IList<FireInstance> GetErroredJobs(int count)
         {
             Logger.Debug("Entered AnalyticsController.GetErroredJobs().");
@@ -91,6 +95,7 @@ namespace R.Scheduler.Controllers
         /// <returns></returns>
         [AcceptVerbs("GET")]
         [Route("api/executedJobs")]
+        [SchedulerAuthorize(AppSettingRoles = "Read.Roles", AppSettingUsers = "Read.Users")]
         public IList<FireInstance> GetExecutedJobs(int count)
         {
             Logger.Debug("Entered AnalyticsController.GetExecutedJobs().");
@@ -106,6 +111,22 @@ namespace R.Scheduler.Controllers
             }
 
             return erroredFireInstances;
+        }
+
+        /// <summary>
+        /// Get executed jobs
+        /// </summary>
+        /// <returns></returns>
+        [AcceptVerbs("GET")]
+        [Route("api/upcomingJobs")]
+        [SchedulerAuthorize(AppSettingRoles = "Read.Roles", AppSettingUsers = "Read.Users")]
+        public IList<FireInstance> GetUpcomingJobs(int count)
+        {
+            Logger.Debug("Entered AnalyticsController.GetUpcomingJobs().");
+
+            var upcomingJobs = _analytics.GetUpcomingJobs(count).ToList();
+
+            return upcomingJobs;
         }
     }
 }

@@ -1,5 +1,5 @@
 ﻿using System.Collections.Generic;
-using Quartz;
+using R.Scheduler.Contracts.Model;
 
 namespace R.Scheduler.Interfaces
 {
@@ -7,8 +7,9 @@ namespace R.Scheduler.Interfaces
     {
         int GetJobCount();
         int GetTriggerCount();
-        IEnumerable<ITrigger> GetFiredTriggers();
+        IEnumerable<FireInstance> GetExecutingJobs();
         IEnumerable<AuditLog> GetErroredJobs(int count);
         IEnumerable<AuditLog> GetExecutedJobs(int count);
+        IEnumerable<FireInstance> GetUpcomingJobs(int count);
     }
 }

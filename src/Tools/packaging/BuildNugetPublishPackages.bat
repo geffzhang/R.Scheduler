@@ -7,11 +7,11 @@ SET OUTDIR=C:\Git\R.Scheduler\src\
 del *.nupkg
 
 NuGet pack "%OUTDIR%R.Scheduler\R.Scheduler.nuspec"
-NuGet pack "%OUTDIR%R.Scheduler.Contracts\R.Scheduler.Contracts.nuspec"
+::NuGet pack "%OUTDIR%R.Scheduler.Contracts\R.Scheduler.Contracts.nuspec"
 
 
-nuget.exe push R.Scheduler.0.3.16.nupkg
-::nuget.exe push R.Scheduler.Contracts.0.3.11.nupkg
+nuget.exe push R.Scheduler.1.2.1-pre.nupkg -Source https://www.nuget.org/api/v2/package
+::nuget.exe push R.Scheduler.Contracts.1.2.0-pre.nupkg -Source https://www.nuget.org/api/v2/package
 
            
 @ECHO === === === === === === === ===

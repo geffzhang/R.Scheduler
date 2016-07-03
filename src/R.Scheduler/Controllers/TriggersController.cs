@@ -5,11 +5,13 @@ using System.Web.Http;
 using Common.Logging;
 using Quartz;
 using R.Scheduler.Contracts.Model;
+using R.Scheduler.Core;
 using R.Scheduler.Interfaces;
 using StructureMap;
 
 namespace R.Scheduler.Controllers
 {
+    [SchedulerAuthorize(AppSettingRoles = "Roles", AppSettingUsers = "Users")]
     public class TriggersController : ApiController
     {
         private static readonly ILog Logger = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
@@ -23,16 +25,16 @@ namespace R.Scheduler.Controllers
         /// <summary>
         /// Get all triggers of a specified job
         /// </summary>
-        /// <param name="jobName"></param>
-        /// <param name="jobGroup"></param>
+        /// <param name="jobId"></param>
         /// <returns></returns>
         [AcceptVerbs("GET")]
-        [Route("api/triggers")]
-        public IList<TriggerDetails> Get(string jobName, string jobGroup)
+        [Route("api/jobs/{jobId}/triggers")]
+        [SchedulerAuthorize(AppSettingRoles = "Read.Roles", AppSettingUsers = "Read.Users")]
+        public IList<TriggerDetails> Get(Guid jobId)
         {
-            Logger.DebugFormat("Entered TriggersController.Get(). jobName = {0}, jobName = {1}", jobName, jobGroup);
+            Logger.DebugFormat("Entered TriggersController.Get(). jobId = {0}", jobId);
 
-            IEnumerable<ITrigger> quartzTriggers = _schedulerCore.GetTriggersOfJob(jobName, jobGroup);
+            IDictionary<ITrigger, Guid> quartzTriggers = _schedulerCore.GetTriggersOfJob(jobId);
 
             return TriggerHelper.GetTriggerDetails(quartzTriggers);
         }
@@ -43,6 +45,7 @@ namespace R.Scheduler.Controllers
         /// <returns></returns>
         [AcceptVerbs("GET")]
         [Route("api/fireTimes")]
+        [SchedulerAuthorize(AppSettingRoles = "Read.Roles", AppSettingUsers = "Read.Users")]
         public IList<TriggerFireTime> Get(DateTime start, DateTime end)
         {
             Logger.Debug("Entered TriggersController.Get()");
@@ -59,6 +62,7 @@ namespace R.Scheduler.Controllers
         /// <returns></returns>
         [AcceptVerbs("POST")]
         [Route("api/simpleTriggers")]
+        [SchedulerAuthorize(AppSettingRoles = "Create.Roles", AppSettingUsers = "Create.Users")]
         public QueryResponse Post([FromBody]SimpleTrigger model)
         {
             Logger.InfoFormat("Entered TriggersController.Post(). Name = {0}", model.Name);
@@ -93,6 +97,7 @@ namespace R.Scheduler.Controllers
         /// <returns></returns>
         [AcceptVerbs("POST")]
         [Route("api/cronTriggers")]
+        [SchedulerAuthorize(AppSettingRoles = "Create.Roles", AppSettingUsers = "Create.Users")]
         public QueryResponse Post([FromBody] CronTrigger model)
         {
             Logger.DebugFormat("Entered TriggersController.Post(). Name = {0}", model.Name);
@@ -101,7 +106,8 @@ namespace R.Scheduler.Controllers
 
             try
             {
-                _schedulerCore.ScheduleTrigger(model);
+                var id = _schedulerCore.ScheduleTrigger(model);
+                response.Id = id;
             }
             catch (Exception ex)
             {
@@ -130,20 +136,20 @@ namespace R.Scheduler.Controllers
         /// <summary>
         /// Remove all triggers of a specified job
         /// </summary>
-        /// <param name="jobName"></param>
-        /// <param name="jobGroup"></param>
+        /// <param name="jobId"></param>
         /// <returns></returns>
         [AcceptVerbs("DELETE")]
-        [Route("api/triggers/schedule")]
-        public QueryResponse Unschedule(string jobName, string jobGroup)
+        [Route("api/jobs/{jobId}/triggers")]
+        [SchedulerAuthorize(AppSettingRoles = "Delete.Roles", AppSettingUsers = "Delete.Users")]
+        public QueryResponse Unschedule(Guid jobId)
         {
-            Logger.DebugFormat("Entered TriggersController.Unschedule(). jobName = {0}, jobName = {1}", jobName, jobGroup);
+            Logger.DebugFormat("Entered TriggersController.Unschedule(). jobId = {0}", jobId);
 
             var response = new QueryResponse { Valid = true };
 
             try
             {
-                _schedulerCore.RemoveJobTriggers(jobName, jobGroup);
+                _schedulerCore.RemoveJobTriggers(jobId);
             }
             catch (Exception ex)
             {
@@ -165,24 +171,24 @@ namespace R.Scheduler.Controllers
         /// <summary>
         /// Remove specified trigger
         /// </summary>
-        /// <param name="triggerName"></param>
-        /// <param name="triggerGroup"></param>
+        /// <param name="id"></param>
         /// <returns></returns>
         [AcceptVerbs("DELETE")]
-        [Route("api/triggers")]
-        public QueryResponse DeleteTrigger(string triggerName, string triggerGroup)
+        [Route("api/triggers/{id}")]
+        [SchedulerAuthorize(AppSettingRoles = "Delete.Roles", AppSettingUsers = "Delete.Users")]
+        public QueryResponse DeleteTrigger(Guid id)
         {
-            Logger.DebugFormat("Entered TriggersController.DeleteTrigger(). triggerGroup = {0}, triggerGroup = {1}", triggerName, triggerGroup);
+            Logger.DebugFormat("Entered TriggersController.DeleteTrigger(). id = {0}", id);
 
             var response = new QueryResponse { Valid = true };
 
             try
             {
-                _schedulerCore.RemoveTrigger(triggerName, triggerGroup);
+                _schedulerCore.RemoveTrigger(id);
             }
             catch (Exception ex)
             {
-                Logger.ErrorFormat("Error removing trigger {0}. {1}", triggerName, ex.Message);
+                Logger.ErrorFormat("Error removing trigger {0}. {1}", id, ex.Message);
 
                 string type = "Server";
                 if (ex is ArgumentException)
@@ -197,7 +203,7 @@ namespace R.Scheduler.Controllers
                     {
                         Code = "ErrorRemovingTrigger",
                         Type = type,
-                        Message = string.Format("Error removing trigger {0}.", triggerName)
+                        Message = string.Format("Error removing trigger {0}.", id)
                     }
                 };
             }

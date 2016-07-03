@@ -1,9 +1,11 @@
-﻿using System.Collections.Generic;
-using System.Reflection;
-using Common.Logging;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using Quartz;
+using Quartz.Impl.Matchers;
+using Quartz.Spi;
+using R.Scheduler.Contracts.Model;
 using R.Scheduler.Interfaces;
-using StructureMap;
 
 namespace R.Scheduler.Core
 {
@@ -12,48 +14,117 @@ namespace R.Scheduler.Core
     /// </summary>
     public class Analytics : IAnalytics
     {
-        private static readonly ILog Logger = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
         private readonly IScheduler _scheduler;
         private readonly IPersistanceStore _persistanceStore;
 
-        public Analytics(IScheduler scheduler)
+        public Analytics(IScheduler scheduler, IPersistanceStore persistanceStore)
         {
             _scheduler = scheduler;
-            _persistanceStore = ObjectFactory.GetInstance<IPersistanceStore>();
-            ObjectFactory.GetInstance<ISchedulerCore>();
+            _persistanceStore = persistanceStore;
         }
 
+        /// <summary>
+        /// Get number of job setup in scheduler
+        /// </summary>
+        /// <returns></returns>
         public int GetJobCount()
         {
-            return _persistanceStore.GetJobDetailsCount();
+            return _scheduler.GetJobKeys(GroupMatcher<JobKey>.AnyGroup()).Count;
         }
 
+        /// <summary>
+        /// Get number of triggers setup in scheduler
+        /// </summary>
+        /// <returns></returns>
         public int GetTriggerCount()
         {
-            return _persistanceStore.GetTriggerCount();
+            return _scheduler.GetTriggerKeys(GroupMatcher<TriggerKey>.AnyGroup()).Count;
         }
 
-        public IEnumerable<ITrigger> GetFiredTriggers()
+        /// <summary>
+        /// Get fire instances of currently executing jobs.
+        /// </summary>
+        /// <returns></returns>
+        public IEnumerable<FireInstance> GetExecutingJobs()
         {
-            IList<ITrigger> retval = new List<ITrigger>();
-            var firedTriggers = _persistanceStore.GetFiredTriggers();
+            IList<FireInstance> retval = new List<FireInstance>();
 
-            foreach (var firedTrigger in firedTriggers)
+            var executingJobs = _scheduler.GetCurrentlyExecutingJobs();
+
+            foreach (var executingJob in executingJobs)
             {
-                retval.Add(_scheduler.GetTrigger(firedTrigger));
+                retval.Add(new FireInstance
+                {
+                    FireTimeUtc = executingJob.Trigger.GetPreviousFireTimeUtc(),
+                    JobName = executingJob.JobDetail.Key.Name,
+                    JobGroup = executingJob.JobDetail.Key.Group,
+                    TriggerName = executingJob.Trigger.Key.Name,
+                    TriggerGroup = executingJob.Trigger.Key.Group,
+                    JobId = _persistanceStore.GetJobId(executingJob.JobDetail.Key)
+                });
             }
 
             return retval;
         }
 
+        /// <summary>
+        /// Get a specified number of most recently failed jobs
+        /// </summary>
+        /// <param name="count"></param>
+        /// <returns></returns>
         public IEnumerable<AuditLog> GetErroredJobs(int count)
         {
             return _persistanceStore.GetErroredJobs(count);
         }
 
+        /// <summary>
+        /// Get a specified number of most recently executed jobs
+        /// </summary>
+        /// <param name="count"></param>
+        /// <returns></returns>
         public IEnumerable<AuditLog> GetExecutedJobs(int count)
         {
             return _persistanceStore.GetExecutedJobs(count);
+        }
+
+        /// <summary>
+        /// Get a specified number of upcoming jobs
+        /// </summary>
+        /// <param name="count"></param>
+        /// <returns></returns>
+        public IEnumerable<FireInstance> GetUpcomingJobs(int count)
+        {
+            IList<FireInstance> temp = new List<FireInstance>();
+
+            var allTriggerKeys = _scheduler.GetTriggerKeys(GroupMatcher<TriggerKey>.AnyGroup());
+            foreach (var triggerKey in allTriggerKeys)
+            {
+                ITrigger trigger = _scheduler.GetTrigger(triggerKey);
+
+                ICalendar cal = null;
+                if (!string.IsNullOrEmpty(trigger.CalendarName))
+                {
+                    cal = _scheduler.GetCalendar(trigger.CalendarName);
+                }
+                var fireTimes = TriggerUtils.ComputeFireTimes(trigger as IOperableTrigger, cal, count);
+
+                foreach (var dateTimeOffset in fireTimes)
+                {
+                    temp.Add(new FireInstance
+                    {
+                        FireTimeUtc = dateTimeOffset,
+                        JobName = trigger.JobKey.Name,
+                        JobGroup = trigger.JobKey.Group,
+                        TriggerName = trigger.Key.Name,
+                        TriggerGroup = trigger.Key.Group,
+                        JobId = _persistanceStore.GetJobId(trigger.JobKey)
+                    });
+                }
+            }
+
+            IList<FireInstance> retval = temp.OrderBy(i => i.FireTimeUtc).Take(count).ToList();
+
+            return retval;
         }
     }
 }

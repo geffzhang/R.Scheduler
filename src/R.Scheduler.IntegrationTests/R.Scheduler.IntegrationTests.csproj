@@ -62,9 +62,9 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\packages\Moq.4.2.1510.2205\lib\net40\Moq.dll</HintPath>
     </Reference>
-    <Reference Include="Newtonsoft.Json, Version=7.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\packages\Newtonsoft.Json.7.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
+    <Reference Include="Newtonsoft.Json, Version=8.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>..\packages\Newtonsoft.Json.8.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
+      <Private>True</Private>
     </Reference>
     <Reference Include="Owin, Version=1.0.0.0, Culture=neutral, PublicKeyToken=f0ebd12fd5e55cc5, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
@@ -107,8 +107,10 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AnalyticsTests.cs" />
     <Compile Include="AssemblyPluginJobTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="SchedulerCoreTests.cs" />
     <Compile Include="SchedulerTests.cs" />
     <Compile Include="Startup.cs" />
     <Compile Include="WebRequestJobTests.cs" />
@@ -126,6 +128,10 @@
       <Project>{C2F4994F-DB81-4779-8490-89250561F0D7}</Project>
       <Name>R.Scheduler.Contracts</Name>
     </ProjectReference>
+    <ProjectReference Include="..\R.Scheduler.Core\R.Scheduler.Core.csproj">
+      <Project>{0B05F704-2CFF-4571-B63C-D9ABC7FD5666}</Project>
+      <Name>R.Scheduler.Core</Name>
+    </ProjectReference>
     <ProjectReference Include="..\R.Scheduler.Interfaces\R.Scheduler.Interfaces.csproj">
       <Project>{4010d63d-4ba3-4e41-9087-16cdd341febf}</Project>
       <Name>R.Scheduler.Interfaces</Name>
@@ -134,9 +140,17 @@
       <Project>{A338A7FE-D041-41C3-9CDD-5E35171961DD}</Project>
       <Name>R.Scheduler.AssemblyPlugin</Name>
     </ProjectReference>
+    <ProjectReference Include="..\R.Scheduler.Persistance\R.Scheduler.Persistance.csproj">
+      <Project>{FBADF088-E56E-4862-9C1C-3FF81C4BD92B}</Project>
+      <Name>R.Scheduler.Persistance</Name>
+    </ProjectReference>
     <ProjectReference Include="..\R.Scheduler.Sql\R.Scheduler.Sql.csproj">
       <Project>{99edf966-9370-4fa2-8ce7-6089f88e83cc}</Project>
       <Name>R.Scheduler.Sql</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\R.Scheduler.TestListenersImp\R.Scheduler.TestListenersImp.csproj">
+      <Project>{00fafe80-af56-4277-9177-bd9dd3eb7ba5}</Project>
+      <Name>R.Scheduler.TestListenersImp</Name>
     </ProjectReference>
     <ProjectReference Include="..\R.Scheduler.WebRequest\R.Scheduler.WebRequest.csproj">
       <Project>{f6b44c96-f2d3-4086-ae9c-507f528559be}</Project>

@@ -1,9 +1,11 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace R.Scheduler.Contracts.Model
 {
     public class TriggerDetails
     {
+        public Guid Id { get; set; }
         public string Type { get; set; }
         public string Name { get; set; }
         public string Group { get; set; }
@@ -17,5 +19,7 @@ namespace R.Scheduler.Contracts.Model
         public DateTime? PreviousFireTimeUtc { get; set; }
         public DateTime? EndTimeUtc { get; set; }
         public DateTime? FinalFireTimeUtc { get; set; }
+        public string AdditionalDetails { get; set; }
+        public Dictionary<string, object> JobDataMap { get; set; }
     }
 }

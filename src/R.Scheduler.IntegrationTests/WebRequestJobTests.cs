@@ -1,8 +1,10 @@
-﻿using System.Web.Http;
+﻿using System;
+using System.Web.Http;
 using Microsoft.Owin.Hosting;
 using Moq;
 using Quartz;
 using Quartz.Impl;
+using Quartz.Impl.Calendar;
 using Xunit;
 
 namespace R.Scheduler.IntegrationTests
@@ -42,6 +44,7 @@ namespace R.Scheduler.IntegrationTests
                 jobDetail.JobDataMap.Add("contentType", "text/plain");
                 jobDetail.JobDataMap.Add("uri", BaseHostingAddress + "/testapi/test?JobName=TestJob&FireInstanceId={$FireInstanceId}");
                 _mockJobExecutionContext.SetupGet(p => p.MergedJobDataMap).Returns(jobDetail.JobDataMap);
+                _mockJobExecutionContext.SetupGet(p => p.JobDetail).Returns(jobDetail);
 
                 // Act
                 pluginRunner.Execute(_mockJobExecutionContext.Object);

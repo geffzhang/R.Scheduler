@@ -1,14 +1,19 @@
 ﻿using System;
+using System.Configuration;
 using System.Data.Common;
 using System.Reflection;
 using Common.Logging;
+using FeatureToggle.Core;
 using Quartz;
+using R.Scheduler.Core;
+using R.Scheduler.Core.FeatureToggles;
 
 namespace R.Scheduler.Sql
 {
     public class SqlJob : IJob
     {
         private static readonly ILog Logger = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private string _jobName;
 
         /// <summary> Db Connection string REQUIRED.</summary>
         public const string ConnectionString = "connectionString";
@@ -34,6 +39,7 @@ namespace R.Scheduler.Sql
         public void Execute(IJobExecutionContext context)
         {
             JobDataMap data = context.MergedJobDataMap;
+            _jobName = context.JobDetail.Key.Name;
 
             string providerAssemblyName = GetRequiredParameter(data, PoviderAssemblyName);
             string connectionClass = GetRequiredParameter(data, ConnectionClass);
@@ -61,6 +67,18 @@ namespace R.Scheduler.Sql
             where COMMAND_TYPE : DbCommand 
             where ADAPTER_TYPE : DbDataAdapter, new()
         {
+            try
+            {
+                if (new EncryptionFeatureToggle().FeatureEnabled)
+                {
+                    connectionString = AESGCM.SimpleDecrypt(connectionString, Convert.FromBase64String(ConfigurationManager.AppSettings["SchedulerEncryptionKey"]));
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("ConfigurationError executing SqlJob job.", ex);
+            }
+
             using (var dbControl = new DbControl<CONNECTION_TYPE, COMMAND_TYPE, ADAPTER_TYPE>(connectionString))
             {
                 DbCommand command = (null != commandStyle && commandStyle.ToLower() == "storedprocedure")
@@ -73,8 +91,8 @@ namespace R.Scheduler.Sql
                 }
                 catch (Exception ex)
                 {
-                    Logger.Error("Error executing non-query.", ex);
-                    throw new JobExecutionException("Error in SqlJob: " + ex.Message, ex, false);
+                    Logger.Error(string.Format("Error in SqlJob ({0}): ", _jobName), ex);
+                    throw new JobExecutionException(ex.Message, ex, false);
                 }
             }
         }
@@ -96,7 +114,8 @@ namespace R.Scheduler.Sql
             string value = data.GetString(propertyName);
             if (string.IsNullOrEmpty(value))
             {
-                throw new ArgumentException(propertyName + " not specified.");
+                Logger.ErrorFormat("Error in SqlJob: {0} not specified.", propertyName);
+                throw new JobExecutionException(string.Format("{0} not specified.", propertyName));
             }
             return value;
         }

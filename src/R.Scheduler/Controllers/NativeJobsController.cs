@@ -17,6 +17,7 @@ namespace R.Scheduler.Controllers
     /// <summary>
     /// Controller for Quartz.net built-in job for executing native executables in a separate process.
     /// </summary>
+    [SchedulerAuthorize(AppSettingRoles = "Roles", AppSettingUsers = "Users")]
     public class NativeJobsController : BaseJobsImpController
     {
         private static readonly ILog Logger = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
@@ -33,15 +34,16 @@ namespace R.Scheduler.Controllers
         /// <returns></returns>
         [AcceptVerbs("GET")]
         [Route("api/nativeJobs")]
+        [SchedulerAuthorize(AppSettingRoles = "Read.Roles", AppSettingUsers = "Read.Users")]
         public IEnumerable<NativeExecJob> Get()
         {
             Logger.Debug("Entered NativeJobsController.Get().");
 
-            IEnumerable<IJobDetail> jobDetails = null;
+            IDictionary<IJobDetail, Guid> jobDetailsMap;
 
             try
             {
-                jobDetails = _schedulerCore.GetJobDetails(typeof(NativeJob));
+                jobDetailsMap = _schedulerCore.GetJobDetails(typeof(NativeJob));
             }
             catch (Exception ex)
             {
@@ -49,28 +51,30 @@ namespace R.Scheduler.Controllers
                 return null;
             }
 
-            return jobDetails.Select(jobDetail =>
+            return jobDetailsMap.Select(mapItem =>
                                                     new NativeExecJob
                                                     {
-                                                        JobName = jobDetail.Key.Name,
-                                                        JobGroup = jobDetail.Key.Group,
+                                                        Id = mapItem.Value,
+                                                        JobName = mapItem.Key.Key.Name,
+                                                        JobGroup = mapItem.Key.Key.Group,
                                                         SchedulerName = _schedulerCore.SchedulerName,
-                                                        Command = jobDetail.JobDataMap.GetString("command"),
-                                                        Parameters = jobDetail.JobDataMap.GetString("parameters"),
-                                                        WaitForProcess = jobDetail.JobDataMap.GetBooleanValueFromString("waitForProcess"),
-                                                        ConsumeStreams = jobDetail.JobDataMap.GetBooleanValueFromString("consumeStreams"),
-                                                        WorkingDirectory = jobDetail.JobDataMap.GetString("workingDirectory"),
+                                                        Command = mapItem.Key.JobDataMap.GetString("command"),
+                                                        Parameters = mapItem.Key.JobDataMap.GetString("parameters"),
+                                                        WaitForProcess = mapItem.Key.JobDataMap.GetBooleanValueFromString("waitForProcess"),
+                                                        ConsumeStreams = mapItem.Key.JobDataMap.GetBooleanValueFromString("consumeStreams"),
+                                                        WorkingDirectory = mapItem.Key.JobDataMap.GetString("workingDirectory"),
                                                     }).ToList();
 
         }
 
         /// <summary>
-        /// Get job details of <see cref="jobName"/>
+        /// Get job details of <see cref="NativeExecJob"/>
         /// </summary>
         /// <returns></returns>
         [AcceptVerbs("GET")]
-        [Route("api/nativeJobs")]
-        public NativeExecJob Get(string jobName, string jobGroup)
+        [Route("api/nativeJobs/{id}")]
+        [SchedulerAuthorize(AppSettingRoles = "Read.Roles", AppSettingUsers = "Read.Users")]
+        public NativeExecJob Get(Guid id)
         {
             Logger.Debug("Entered NativeJobsController.Get().");
 
@@ -78,7 +82,7 @@ namespace R.Scheduler.Controllers
 
             try
             {
-                jobDetail = _schedulerCore.GetJobDetail(jobName, jobGroup);
+                jobDetail = _schedulerCore.GetJobDetail(id);
             }
             catch (Exception ex)
             {
@@ -88,6 +92,7 @@ namespace R.Scheduler.Controllers
 
             return new NativeExecJob
             {
+                Id = id,
                 JobName = jobDetail.Key.Name,
                 JobGroup = jobDetail.Key.Group,
                 SchedulerName = _schedulerCore.SchedulerName,
@@ -101,16 +106,37 @@ namespace R.Scheduler.Controllers
         }
 
         /// <summary>
-        /// Create new SendMailJob without any triggers
+        /// Create new <see cref="NativeExecJob"/> without any triggers
         /// </summary>
         /// <param name="model"></param>
         /// <returns></returns>
         [AcceptVerbs("POST")]
         [Route("api/nativeJobs")]
+        [SchedulerAuthorize(AppSettingRoles = "Create.Roles", AppSettingUsers = "Create.Users")]
         public QueryResponse Post([FromBody]NativeExecJob model)
         {
             Logger.DebugFormat("Entered NativeJobsController.Post(). Job Name = {0}", model.JobName);
 
+            return CreateJob(model);
+        }
+
+        /// <summary>
+        /// Update <see cref="NativeExecJob"/>
+        /// </summary>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        [AcceptVerbs("PUT")]
+        [Route("api/nativeJobs/{id}")]
+        [SchedulerAuthorize(AppSettingRoles = "Update.Roles", AppSettingUsers = "Update.Users")]
+        public QueryResponse Put([FromBody]NativeExecJob model)
+        {
+            Logger.DebugFormat("Entered NativeJobsController.Put(). Job Name = {0}", model.JobName);
+
+            return CreateJob(model);
+        }
+
+        private QueryResponse CreateJob(NativeExecJob model)
+        {
             var dataMap = new Dictionary<string, object>
             {
                 {"command", model.Command},
@@ -120,7 +146,7 @@ namespace R.Scheduler.Controllers
                 {"workingDirectory", model.WorkingDirectory}
             };
 
-            return base.CreateJob(model, typeof(NativeJob), dataMap, model.Description);
+            return base.CreateJob(model, typeof (NativeJob), dataMap, model.Description);
         }
     }
 }

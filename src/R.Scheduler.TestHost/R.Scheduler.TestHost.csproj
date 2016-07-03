@@ -57,13 +57,13 @@
     <Reference Include="Microsoft.Owin.Hosting">
       <HintPath>..\packages\Microsoft.Owin.Hosting.3.0.1\lib\net45\Microsoft.Owin.Hosting.dll</HintPath>
     </Reference>
-    <Reference Include="Newtonsoft.Json, Version=7.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\packages\Newtonsoft.Json.7.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
+    <Reference Include="Newtonsoft.Json, Version=8.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>..\packages\Newtonsoft.Json.8.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
+      <Private>True</Private>
     </Reference>
-    <Reference Include="Npgsql, Version=3.0.3.0, Culture=neutral, PublicKeyToken=5d8b90d52f46fda7, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\packages\Npgsql.3.0.3\lib\net45\Npgsql.dll</HintPath>
+    <Reference Include="Npgsql, Version=3.0.5.0, Culture=neutral, PublicKeyToken=5d8b90d52f46fda7, processorArchitecture=MSIL">
+      <HintPath>..\packages\Npgsql.3.0.5\lib\net45\Npgsql.dll</HintPath>
+      <Private>True</Private>
     </Reference>
     <Reference Include="Owin, Version=1.0.0.0, Culture=neutral, PublicKeyToken=f0ebd12fd5e55cc5, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
@@ -134,6 +134,14 @@
     <ProjectReference Include="..\R.Scheduler.Sql\R.Scheduler.Sql.csproj">
       <Project>{99edf966-9370-4fa2-8ce7-6089f88e83cc}</Project>
       <Name>R.Scheduler.Sql</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\R.Scheduler.TestCustomAuthorizationImp\R.Scheduler.TestCustomAuthorizationImp.csproj">
+      <Project>{64467844-10c7-4b12-ad87-d6f38de05d9b}</Project>
+      <Name>R.Scheduler.TestCustomAuthorizationImp</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\R.Scheduler.TestListenersImp\R.Scheduler.TestListenersImp.csproj">
+      <Project>{00fafe80-af56-4277-9177-bd9dd3eb7ba5}</Project>
+      <Name>R.Scheduler.TestListenersImp</Name>
     </ProjectReference>
     <ProjectReference Include="..\R.Scheduler.WebRequest\R.Scheduler.WebRequest.csproj">
       <Project>{f6b44c96-f2d3-4086-ae9c-507f528559be}</Project>
