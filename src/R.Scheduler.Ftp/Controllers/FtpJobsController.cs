@@ -5,7 +5,6 @@ using System.Linq;
 using System.Reflection;
 using System.Web.Http;
 using Common.Logging;
-using FeatureToggle.Core;
 using Quartz;
 using R.Scheduler.Contracts.Model;
 using R.Scheduler.Core;
@@ -76,13 +75,23 @@ namespace R.Scheduler.Ftp.Controllers
 
             string username = jobDetail.JobDataMap.GetString("userName");
             string password = jobDetail.JobDataMap.GetString("password");
+            string sshPrivateKeyPassword = jobDetail.JobDataMap.GetString("sshPrivateKeyPassword");
 
             try
             {
                 if (new EncryptionFeatureToggle().FeatureEnabled)
                 {
                     username = AESGCM.SimpleDecrypt(username, Convert.FromBase64String(ConfigurationManager.AppSettings["SchedulerEncryptionKey"]));
-                    password = AESGCM.SimpleDecrypt(password, Convert.FromBase64String(ConfigurationManager.AppSettings["SchedulerEncryptionKey"]));
+
+                    if (!string.IsNullOrEmpty(password))
+                    {
+                        password = AESGCM.SimpleDecrypt(password, Convert.FromBase64String(ConfigurationManager.AppSettings["SchedulerEncryptionKey"]));
+                    }
+
+                    if (!string.IsNullOrEmpty(sshPrivateKeyPassword))
+                    {
+                        sshPrivateKeyPassword = AESGCM.SimpleDecrypt(sshPrivateKeyPassword, Convert.FromBase64String(ConfigurationManager.AppSettings["SchedulerEncryptionKey"]));
+                    }
                 }
             }
             catch (Exception ex)
@@ -104,7 +113,9 @@ namespace R.Scheduler.Ftp.Controllers
                 RemoteDirectoryPath = jobDetail.JobDataMap.GetString("remoteDirectoryPath"),
                 FileExtensions = jobDetail.JobDataMap.GetString("fileExtensions"),
                 CutOffTimeSpan = jobDetail.JobDataMap.GetString("cutOffTimeSpan"),
-                Description = jobDetail.Description
+                Description = jobDetail.Description,
+                SshPrivateKeyPath = jobDetail.JobDataMap.GetString("sshPrivateKeyPath"),
+                SshPrivateKeyPassword = sshPrivateKeyPassword
             };
         }
 
@@ -142,13 +153,23 @@ namespace R.Scheduler.Ftp.Controllers
         {
             string username = model.Username;
             string password = model.Password;
+            string sshPrivateKeyPassword = model.SshPrivateKeyPassword;
 
             try
             {
                 if (new EncryptionFeatureToggle().FeatureEnabled)
                 {
                     username = AESGCM.SimpleEncrypt(username, Convert.FromBase64String(ConfigurationManager.AppSettings["SchedulerEncryptionKey"]));
-                    password = AESGCM.SimpleEncrypt(password, Convert.FromBase64String(ConfigurationManager.AppSettings["SchedulerEncryptionKey"]));
+
+                    if (!string.IsNullOrEmpty(password))
+                    {
+                        password = AESGCM.SimpleEncrypt(password, Convert.FromBase64String(ConfigurationManager.AppSettings["SchedulerEncryptionKey"]));
+                    }
+
+                    if (!string.IsNullOrEmpty(sshPrivateKeyPassword))
+                    {
+                        sshPrivateKeyPassword = AESGCM.SimpleEncrypt(sshPrivateKeyPassword, Convert.FromBase64String(ConfigurationManager.AppSettings["SchedulerEncryptionKey"]));
+                    }
                 }
             }
             catch (Exception ex)
@@ -165,7 +186,9 @@ namespace R.Scheduler.Ftp.Controllers
                 {"localDirectoryPath", model.LocalDirectoryPath},
                 {"remoteDirectoryPath", model.RemoteDirectoryPath},
                 {"fileExtensions", model.FileExtensions},
-                {"cutOffTimeSpan", model.CutOffTimeSpan}
+                {"cutOffTimeSpan", model.CutOffTimeSpan},
+                {"sshPrivateKeyPath", model.SshPrivateKeyPath},
+                {"sshPrivateKeyPassword", sshPrivateKeyPassword}
             };
 
             return base.CreateJob(model, typeof (FtpDownloadJob), dataMap, model.Description);
